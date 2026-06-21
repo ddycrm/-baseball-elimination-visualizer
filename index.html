@@ -39,9 +39,9 @@
         var(--bg);
     }
 
-    button, select, input { font: inherit; }
+    button, select, input, textarea { font: inherit; }
     button, select { color: var(--text); }
-    button:focus-visible, select:focus-visible, input:focus-visible {
+    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
       outline: 3px solid rgba(236, 72, 153, .35);
       outline-offset: 2px;
     }
@@ -131,6 +131,19 @@
       background: #fffafd;
     }
     .team-card strong { display: block; margin-bottom: 8px; color: #9d174d; }
+    .team-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .team-card-header strong { margin: 0; }
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: white;
+      color: var(--red);
+      cursor: pointer;
+      font-weight: 900;
+    }
     .input-row { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 6px; margin-top: 6px; }
     .input-row label { color: var(--muted); font-size: 13px; }
     .input-row input {
@@ -148,6 +161,25 @@
     .game-input label { flex: 1; font-weight: 800; font-size: 13px; }
     .game-input input { width: 58px; padding: 6px; border: 1px solid var(--line); border-radius: 7px; }
     .parameter-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 13px; align-items: center; }
+    .dataset-import {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
+    .dataset-import textarea {
+      width: 100%;
+      min-height: 126px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      background: white;
+      font: 13px/1.5 Consolas, "Microsoft YaHei", monospace;
+    }
+    .dataset-import-actions { display: flex; flex-direction: column; gap: 8px; }
     .form-message { color: var(--muted); font-size: 14px; }
     .form-message.error { color: var(--red); font-weight: 800; }
 
@@ -375,11 +407,22 @@
     }
     @media (max-width: 700px) {
       .app { padding: 8px; }
+      .top-controls, .field { width: 100%; }
       .field { align-items: flex-start; flex-direction: column; }
-      select { min-width: 260px; }
+      .tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .tab { min-width: 0; padding-inline: 6px; }
+      select { width: 100%; min-width: 0; }
+      .panel-header { align-items: flex-start; flex-wrap: wrap; }
+      .line-code { overflow-wrap: anywhere; }
       .graph-footer { grid-template-columns: 1fr; }
       .speed { width: 100%; justify-content: center; }
       .parameter-grid, .games-grid { grid-template-columns: 1fr; }
+      .dataset-import { grid-template-columns: 1fr; }
+      .dataset-import-actions { flex-direction: row; flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -388,12 +431,13 @@
     <header class="topbar">
       <div class="brand">
         <h1>棒球淘汰 · 最大流动态演示</h1>
-        <p>teams4 数据集｜逐行伪代码与残量网络同步</p>
+        <p>自由数据输入｜三种最大流算法｜逐行残量网络动画</p>
       </div>
       <div class="top-controls">
         <div class="field">
           <label>最大流算法</label>
           <div class="tabs" role="tablist" aria-label="最大流算法">
+            <button class="tab" data-algorithm="ff" role="tab" aria-selected="false">Ford–Fulkerson</button>
             <button class="tab active" data-algorithm="ek" role="tab" aria-selected="true">Edmonds–Karp</button>
             <button class="tab" data-algorithm="dinic" role="tab" aria-selected="false">Dinic</button>
           </div>
@@ -411,14 +455,22 @@
     </header>
 
     <details class="parameter-panel">
-      <summary>自定义参数与随机示例</summary>
+      <summary>自由输入数据与随机示例</summary>
       <div class="parameter-body">
-        <p class="parameter-help">修改四支球队的名称、胜场、剩余场次和六组对阵场次，然后点击“应用参数并运行”。所有数字必须是非负整数。</p>
+        <p class="parameter-help">可直接粘贴 Princeton teams*.txt 格式，也可在下方增删球队并编辑胜场、剩余场次和两两对阵。支持 2–5 支球队。</p>
+        <div class="dataset-import">
+          <textarea id="datasetText" aria-label="标准棒球数据文本" spellcheck="false"></textarea>
+          <div class="dataset-import-actions">
+            <button class="control-btn primary" id="importDatasetBtn">导入文本并运行</button>
+            <button class="control-btn" id="exportDatasetBtn">用当前数据填充</button>
+          </div>
+        </div>
         <div class="parameter-grid" id="teamInputs"></div>
         <div class="games-title">两两剩余比赛场次</div>
         <div class="games-grid" id="gameInputs"></div>
         <div class="parameter-actions">
           <button class="control-btn primary" id="applyParamsBtn">应用参数并运行</button>
+          <button class="control-btn" id="addTeamBtn">添加球队</button>
           <button class="control-btn" id="randomExampleBtn">随机生成示例并运行</button>
           <button class="control-btn" id="restoreTeams4Btn">恢复 teams4</button>
           <span class="form-message" id="formMessage">当前使用内置 teams4 数据。</span>
@@ -489,7 +541,7 @@
       NY: Object.freeze({ id: "NY", name: "New York", wins: 78, remaining: 6 }),
       MON: Object.freeze({ id: "MON", name: "Montreal", wins: 77, remaining: 3 })
     });
-    const TEAM_ORDER = Object.freeze(["ATL", "PHI", "NY", "MON"]);
+    const DEFAULT_TEAM_ORDER = Object.freeze(["ATL", "PHI", "NY", "MON"]);
     const DEFAULT_GAMES = Object.freeze({
       "ATL|PHI": 1,
       "ATL|NY": 6,
@@ -500,6 +552,7 @@
     });
     let TEAM_DATA = structuredClone(DEFAULT_TEAM_DATA);
     let GAMES = structuredClone(DEFAULT_GAMES);
+    let TEAM_ORDER = [...DEFAULT_TEAM_ORDER];
     const INF = 1_000_000;
 
     const EK_CODE = Object.freeze([
@@ -518,6 +571,25 @@
       "    flow ← flow + bottleneck",
       "BFS 无法到达 t，最大流计算结束",
       "从 s 在最终残量图中 BFS，得到源侧可达集",
+      "比较 flow 与 total，并输出淘汰证书 R"
+    ]);
+
+    const FF_CODE = Object.freeze([
+      "判定球队 x，计算 W ← w[x] + r[x]",
+      "若存在 w[j] > W：返回“平凡淘汰”",
+      "构造流网络，total ← 所有 s→比赛节点容量之和",
+      "flow ← 0",
+      "while DFS(s, t) 能找到任意增广路径：",
+      "    访问顶点 u，并标记为已访问",
+      "    for 每条残量边 (u, v)：",
+      "        若 residual(u,v)>0 且 v 未访问：DFS 深入 v",
+      "        若到达 t：恢复当前增广路径",
+      "    bottleneck ← 路径上的最小残量",
+      "    for 路径中的每条边 (u,v)：",
+      "        更新正向与反向残量",
+      "    flow ← flow + bottleneck",
+      "DFS 无法到达 t，最大流计算结束",
+      "从 s 在最终残量图中搜索，得到源侧可达集",
       "比较 flow 与 total，并输出淘汰证书 R"
     ]);
 
@@ -903,6 +975,104 @@
       return { network, steps: collector.steps };
     }
 
+    function generateFordFulkersonSteps(targetId) {
+      const network = buildNetwork(targetId);
+      const residualGraph = createResidualGraph(network);
+      const collector = createStepCollector(network, residualGraph, "ff");
+      if (addCommonOpening(network, collector)) return { network, steps: collector.steps };
+
+      let flow = 0;
+      let augmentCount = 0;
+      collector.push(4, "最大流初始化为 0。", { flow, mode: "初始化最大流" });
+
+      while (true) {
+        const visited = new Set();
+        const parent = {};
+        const path = [];
+        collector.push(5, `开始第 ${augmentCount + 1} 轮 DFS，寻找任意一条增广路径。`, {
+          flow, augmentCount, activeNodes: ["s"], parent, mode: "DFS 搜索"
+        });
+
+        const search = (u) => {
+          visited.add(u);
+          collector.push(6, `DFS 访问 ${nodeDisplay(u)}。`, {
+            flow, augmentCount, activeNodes: [u], parent, mode: "DFS 访问"
+          });
+          if (u === "t") return true;
+          for (let edgeIndex = 0; edgeIndex < residualGraph.adjacency[u].length; edgeIndex += 1) {
+            const edge = residualGraph.adjacency[u][edgeIndex];
+            const edgeId = residualEdgeId(residualGraph, u, edge);
+            collector.push(7, `检查 ${nodeDisplay(u)} → ${nodeDisplay(edge.to)}，剩余容量 ${formatCapacity(edge.residual)}。`, {
+              flow, augmentCount, activeNodes: [u, edge.to],
+              ...residualEdgeFocus(edge, edgeId), parent, mode: "检查残量边"
+            });
+            if (edge.residual <= 0 || visited.has(edge.to)) continue;
+            parent[edge.to] = { from: u, edgeIndex };
+            path.push({
+              from: u,
+              edgeIndex,
+              edgeId,
+              reverseId: `r${edge.originalIndex}`,
+              direction: edge.direction
+            });
+            collector.push(8, `边可用，DFS 深入 ${nodeDisplay(edge.to)}。`, {
+              flow, augmentCount, activeNodes: [u, edge.to],
+              ...residualPathFocus(path), parent, mode: "DFS 深入"
+            });
+            if (search(edge.to)) return true;
+            path.pop();
+          }
+          return false;
+        };
+
+        if (!search("s")) {
+          collector.push(14, "DFS 无法到达汇点 t，不再存在增广路径。", {
+            flow, augmentCount, activeNodes: [...visited], parent, mode: "最大流结束"
+          });
+          break;
+        }
+
+        collector.push(9, `找到增广路径：${path.map((part) => nodeDisplay(part.from)).concat("t").join(" → ")}。`, {
+          flow, augmentCount, ...residualPathFocus(path), parent, mode: "找到增广路径"
+        });
+        const bottleneck = Math.min(...path.map(({ from, edgeIndex }) =>
+          residualGraph.adjacency[from][edgeIndex].residual
+        ));
+        collector.push(10, `路径瓶颈 = ${bottleneck}。`, {
+          flow, augmentCount, ...residualPathFocus(path), parent, bottleneck, mode: "计算瓶颈"
+        });
+        path.forEach((part) => {
+          const edge = residualGraph.adjacency[part.from][part.edgeIndex];
+          collector.push(11, `更新 ${nodeDisplay(part.from)} → ${nodeDisplay(edge.to)} 的残量。`, {
+            flow, augmentCount, ...residualEdgeFocus(edge, part.edgeId),
+            parent, bottleneck, mode: "逐边增广"
+          });
+          applyResidualUpdate(residualGraph, part.from, part.edgeIndex, bottleneck);
+          collector.push(12, `正向残量减少 ${bottleneck}，反向残量增加 ${bottleneck}。`, {
+            flow, augmentCount, ...residualEdgeFocus(edge, part.edgeId),
+            parent, bottleneck, mode: "更新残量"
+          });
+        });
+        flow += bottleneck;
+        augmentCount += 1;
+        collector.push(13, `最大流累加：flow = ${flow}。`, {
+          flow, augmentCount, ...residualPathFocus(path), mode: "完成一轮增广"
+        });
+      }
+
+      const sourceSide = findSourceSide(residualGraph, "s");
+      collector.push(15, `最终残量图从 s 可达：${sourceSide.map(nodeDisplay).join("、")}。`, {
+        flow, augmentCount, sourceSide, activeNodes: sourceSide, mode: "提取最小割"
+      });
+      const result = makeResult(network, flow, sourceSide, augmentCount, 0, "ff");
+      collector.push(16, result.eliminated
+        ? `最大流 ${flow} < 总场数 ${network.totalGames}，被淘汰；证书 R={${result.certificate.join(", ")}}。`
+        : `最大流 ${flow} = 总场数 ${network.totalGames}，所有比赛均可安排，因此未被淘汰。`, {
+        flow, augmentCount, sourceSide, result, mode: "输出结论"
+      });
+      return { network, steps: collector.steps };
+    }
+
     function generateDinicSteps(targetId) {
       const network = buildNetwork(targetId);
       const residualGraph = createResidualGraph(network);
@@ -1086,7 +1256,11 @@
       teamSelect: document.getElementById("teamSelect"),
       teamInputs: document.getElementById("teamInputs"),
       gameInputs: document.getElementById("gameInputs"),
+      datasetText: document.getElementById("datasetText"),
+      importDatasetBtn: document.getElementById("importDatasetBtn"),
+      exportDatasetBtn: document.getElementById("exportDatasetBtn"),
       applyParamsBtn: document.getElementById("applyParamsBtn"),
+      addTeamBtn: document.getElementById("addTeamBtn"),
       randomExampleBtn: document.getElementById("randomExampleBtn"),
       restoreTeams4Btn: document.getElementById("restoreTeams4Btn"),
       formMessage: document.getElementById("formMessage"),
@@ -1101,11 +1275,12 @@
     };
 
     const query = new URLSearchParams(window.location.search);
+    document.querySelector(".parameter-panel").open = query.get("editor") === "open";
     const scenarioParts = (query.get("scenario") ?? "").split("-");
     const requestedAlgorithm = scenarioParts[0] || query.get("algorithm");
     const requestedTarget = scenarioParts[1] || query.get("team");
     const requestedStep = scenarioParts[2] || query.get("step");
-    const initialAlgorithm = ["ek", "dinic"].includes(requestedAlgorithm)
+    const initialAlgorithm = ["ff", "ek", "dinic"].includes(requestedAlgorithm)
       ? requestedAlgorithm
       : "ek";
     const initialTarget = TEAM_ORDER.includes(requestedTarget)
@@ -1128,9 +1303,12 @@
 
     function rebuildDemo() {
       stopAutoplay();
-      const generated = appState.algorithm === "ek"
-        ? generateEdmondsKarpSteps(appState.targetId)
-        : generateDinicSteps(appState.targetId);
+      const generators = {
+        ff: generateFordFulkersonSteps,
+        ek: generateEdmondsKarpSteps,
+        dinic: generateDinicSteps
+      };
+      const generated = generators[appState.algorithm](appState.targetId);
       replaceAppState({
         steps: generated.steps,
         network: generated.network,
@@ -1142,10 +1320,14 @@
     }
 
     function renderCode() {
-      const lines = appState.algorithm === "ek" ? EK_CODE : DINIC_CODE;
-      DOM.codeTitle.textContent = appState.algorithm === "ek"
-        ? "Edmonds–Karp 伪代码"
-        : "Dinic 伪代码";
+      const codeByAlgorithm = { ff: FF_CODE, ek: EK_CODE, dinic: DINIC_CODE };
+      const titleByAlgorithm = {
+        ff: "Ford–Fulkerson 伪代码",
+        ek: "Edmonds–Karp 伪代码",
+        dinic: "Dinic 伪代码"
+      };
+      const lines = codeByAlgorithm[appState.algorithm];
+      DOM.codeTitle.textContent = titleByAlgorithm[appState.algorithm];
       DOM.codeScroll.innerHTML = lines.map((line, index) => `
         <div class="code-line" data-line="${index + 1}">
           <span class="line-number">${String(index + 1).padStart(2, "0")}</span>
@@ -1460,14 +1642,15 @@
         .replaceAll('"', "&quot;");
     }
 
-    const GAME_PAIRS = Object.freeze([
-      ["ATL", "PHI"],
-      ["ATL", "NY"],
-      ["ATL", "MON"],
-      ["PHI", "NY"],
-      ["PHI", "MON"],
-      ["NY", "MON"]
-    ]);
+    function getGamePairs(order = TEAM_ORDER) {
+      const pairs = [];
+      for (let first = 0; first < order.length; first += 1) {
+        for (let second = first + 1; second < order.length; second += 1) {
+          pairs.push([order[first], order[second]]);
+        }
+      }
+      return pairs;
+    }
 
     function refreshTeamSelect() {
       DOM.teamSelect.innerHTML = TEAM_ORDER.map((id) =>
@@ -1481,14 +1664,17 @@
         const team = TEAM_DATA[id];
         return `
           <div class="team-card">
-            <strong>${id}</strong>
+            <div class="team-card-header">
+              <strong>${id}</strong>
+              <button class="icon-btn" data-remove-team="${id}" title="删除 ${id}" aria-label="删除 ${id}">×</button>
+            </div>
             <div class="input-row"><label for="name-${id}">名称</label><input id="name-${id}" data-team="${id}" data-field="name" value="${escapeHtml(team.name)}"></div>
             <div class="input-row"><label for="wins-${id}">胜场</label><input id="wins-${id}" data-team="${id}" data-field="wins" type="number" min="0" step="1" value="${team.wins}"></div>
             <div class="input-row"><label for="remaining-${id}">剩余</label><input id="remaining-${id}" data-team="${id}" data-field="remaining" type="number" min="0" step="1" value="${team.remaining}"></div>
           </div>
         `;
       }).join("");
-      DOM.gameInputs.innerHTML = GAME_PAIRS.map(([a, b]) => {
+      DOM.gameInputs.innerHTML = getGamePairs().map(([a, b]) => {
         const key = pairKey(a, b);
         return `
           <div class="game-input">
@@ -1497,6 +1683,10 @@
           </div>
         `;
       }).join("");
+      DOM.teamInputs.querySelectorAll("[data-remove-team]").forEach((button) => {
+        button.disabled = TEAM_ORDER.length <= 2;
+        button.addEventListener("click", () => removeTeam(button.dataset.removeTeam));
+      });
     }
 
     function readNonNegativeInteger(input, label) {
@@ -1520,7 +1710,7 @@
         };
       });
       const nextGames = {};
-      GAME_PAIRS.forEach(([a, b]) => {
+      getGamePairs().forEach(([a, b]) => {
         const key = pairKey(a, b);
         nextGames[key] = readNonNegativeInteger(
           document.getElementById(`game-${a}-${b}`),
@@ -1535,17 +1725,142 @@
           throw new Error(`${id} 的剩余场次应为对阵场次之和 ${scheduled}。`);
         }
       });
-      return { teams: nextTeams, games: nextGames };
+      return { order: [...TEAM_ORDER], teams: nextTeams, games: nextGames };
     }
 
     function applyDataset(dataset, message) {
+      TEAM_ORDER = [...dataset.order];
       TEAM_DATA = structuredClone(dataset.teams);
       GAMES = structuredClone(dataset.games);
+      if (!TEAM_ORDER.includes(appState.targetId)) {
+        replaceAppState({ targetId: TEAM_ORDER[0] });
+      }
       refreshTeamSelect();
       renderParameterInputs();
+      DOM.datasetText.value = formatDatasetText();
       DOM.formMessage.className = "form-message";
       DOM.formMessage.textContent = message;
       rebuildDemo();
+    }
+
+    function makeTeamId(name, usedIds) {
+      const base = name
+        .normalize("NFKD")
+        .replace(/[^\w]/g, "")
+        .slice(0, 8)
+        .toUpperCase() || `T${usedIds.size + 1}`;
+      let id = base;
+      let suffix = 2;
+      while (usedIds.has(id)) {
+        id = `${base.slice(0, 6)}${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(id);
+      return id;
+    }
+
+    function parseDatasetText(text) {
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (lines.length === 0) throw new Error("请输入数据。");
+      const count = Number(lines[0]);
+      if (!Number.isInteger(count) || count < 2 || count > 5) {
+        throw new Error("球队数量必须是 2–5 的整数。");
+      }
+      if (lines.length !== count + 1) {
+        throw new Error(`应有 ${count} 行球队数据，当前为 ${lines.length - 1} 行。`);
+      }
+
+      const rows = lines.slice(1).map((line, rowIndex) => {
+        const parts = line.split(/\s+/);
+        if (parts.length !== count + 4) {
+          throw new Error(`第 ${rowIndex + 1} 支球队应包含名称、胜/负/剩余和 ${count} 个对阵数。`);
+        }
+        const numbers = parts.slice(1).map(Number);
+        if (numbers.some((value) => !Number.isInteger(value) || value < 0)) {
+          throw new Error(`第 ${rowIndex + 1} 支球队包含非法数字。`);
+        }
+        return {
+          name: parts[0],
+          wins: numbers[0],
+          losses: numbers[1],
+          remaining: numbers[2],
+          schedule: numbers.slice(3)
+        };
+      });
+
+      rows.forEach((row, first) => {
+        if (row.schedule[first] !== 0) throw new Error(`${row.name} 的对角线场次必须为 0。`);
+        const scheduled = row.schedule.reduce((sum, value) => sum + value, 0);
+        if (scheduled !== row.remaining) {
+          throw new Error(`${row.name} 的剩余场次应为对阵场次之和 ${scheduled}。`);
+        }
+        rows.forEach((other, second) => {
+          if (row.schedule[second] !== other.schedule[first]) {
+            throw new Error(`${row.name} 与 ${other.name} 的对阵矩阵不对称。`);
+          }
+        });
+      });
+
+      const usedIds = new Set();
+      const order = rows.map((row) => makeTeamId(row.name, usedIds));
+      const teams = Object.fromEntries(rows.map((row, index) => [
+        order[index],
+        { id: order[index], name: row.name, wins: row.wins, remaining: row.remaining }
+      ]));
+      const games = {};
+      getGamePairs(order).forEach(([a, b]) => {
+        games[`${a}|${b}`] = rows[order.indexOf(a)].schedule[order.indexOf(b)];
+      });
+      return { order, teams, games };
+    }
+
+    function formatDatasetText() {
+      const lines = [String(TEAM_ORDER.length)];
+      TEAM_ORDER.forEach((id) => {
+        const team = TEAM_DATA[id];
+        const schedule = TEAM_ORDER.map((other) => other === id ? 0 : getGame(id, other));
+        lines.push(`${team.name.replace(/\s+/g, "_")} ${team.wins} 0 ${team.remaining} ${schedule.join(" ")}`);
+      });
+      return lines.join("\n");
+    }
+
+    function addTeam() {
+      if (TEAM_ORDER.length >= 5) {
+        DOM.formMessage.className = "form-message error";
+        DOM.formMessage.textContent = "当前画布最多支持 5 支球队。";
+        return;
+      }
+      const usedIds = new Set(TEAM_ORDER);
+      const id = makeTeamId(`T${TEAM_ORDER.length + 1}`, usedIds);
+      const order = [...TEAM_ORDER, id];
+      const teams = {
+        ...structuredClone(TEAM_DATA),
+        [id]: { id, name: `球队${TEAM_ORDER.length + 1}`, wins: 0, remaining: 0 }
+      };
+      const games = { ...structuredClone(GAMES) };
+      TEAM_ORDER.forEach((other) => {
+        const key = order.indexOf(other) < order.indexOf(id) ? `${other}|${id}` : `${id}|${other}`;
+        games[key] = 0;
+      });
+      applyDataset({ order, teams, games }, `已添加 ${id}，请编辑数据后应用。`);
+    }
+
+    function removeTeam(id) {
+      if (TEAM_ORDER.length <= 2) return;
+      const order = TEAM_ORDER.filter((teamId) => teamId !== id);
+      const teams = Object.fromEntries(order.map((teamId) => [teamId, structuredClone(TEAM_DATA[teamId])]));
+      const games = {};
+      getGamePairs(order).forEach(([a, b]) => {
+        games[`${a}|${b}`] = getGame(a, b);
+      });
+      order.forEach((teamId) => {
+        teams[teamId].remaining = order
+          .filter((other) => other !== teamId)
+          .reduce((sum, other) => sum + games[
+            order.indexOf(teamId) < order.indexOf(other) ? `${teamId}|${other}` : `${other}|${teamId}`
+          ], 0);
+      });
+      applyDataset({ order, teams, games }, `已删除 ${id}。`);
     }
 
     function randomInteger(min, max) {
@@ -1554,22 +1869,25 @@
 
     function generateRandomDataset() {
       const games = {};
-      GAME_PAIRS.forEach(([a, b]) => {
+      getGamePairs().forEach(([a, b]) => {
         games[pairKey(a, b)] = randomInteger(0, 4);
       });
-      if (Object.values(games).every((value) => value === 0)) games["ATL|NY"] = 3;
+      if (Object.values(games).every((value) => value === 0)) {
+        const [firstPair] = getGamePairs();
+        games[pairKey(...firstPair)] = 3;
+      }
       const teams = Object.fromEntries(TEAM_ORDER.map((id, index) => {
         const remaining = TEAM_ORDER
           .filter((other) => other !== id)
           .reduce((sum, other) => sum + games[pairKey(id, other)], 0);
         return [id, {
           id,
-          name: ["北辰队", "海棠队", "远山队", "星河队"][index],
+          name: ["北辰队", "海棠队", "远山队", "星河队"][index] ?? `随机队${index + 1}`,
           wins: randomInteger(68, 88),
           remaining
         }];
       }));
-      return { teams, games };
+      return { order: [...TEAM_ORDER], teams, games };
     }
 
     DOM.prevBtn.addEventListener("click", () => goToStep(appState.stepIndex - 1));
@@ -1598,12 +1916,26 @@
         DOM.formMessage.textContent = error.message;
       }
     });
+    DOM.importDatasetBtn.addEventListener("click", () => {
+      try {
+        applyDataset(parseDatasetText(DOM.datasetText.value), "文本数据已导入并运行。");
+      } catch (error) {
+        DOM.formMessage.className = "form-message error";
+        DOM.formMessage.textContent = error.message;
+      }
+    });
+    DOM.exportDatasetBtn.addEventListener("click", () => {
+      DOM.datasetText.value = formatDatasetText();
+      DOM.formMessage.className = "form-message";
+      DOM.formMessage.textContent = "已将当前数据填入文本框。";
+    });
+    DOM.addTeamBtn.addEventListener("click", addTeam);
     DOM.randomExampleBtn.addEventListener("click", () => {
       applyDataset(generateRandomDataset(), "已随机生成一个合法示例并运行。");
     });
     DOM.restoreTeams4Btn.addEventListener("click", () => {
       applyDataset(
-        { teams: DEFAULT_TEAM_DATA, games: DEFAULT_GAMES },
+        { order: [...DEFAULT_TEAM_ORDER], teams: DEFAULT_TEAM_DATA, games: DEFAULT_GAMES },
         "已恢复内置 teams4 数据。"
       );
     });
@@ -1630,17 +1962,23 @@
 
     function runSelfTests() {
       const scenarios = [
+        ["ff", "PHI", true, 6, 7, ["ATL", "NY"]],
         ["ek", "PHI", true, 6, 7, ["ATL", "NY"]],
         ["dinic", "PHI", true, 6, 7, ["ATL", "NY"]],
+        ["ff", "NY", false, 4, 4, []],
         ["ek", "NY", false, 4, 4, []],
         ["dinic", "NY", false, 4, 4, []],
+        ["ff", "MON", true, 0, 7, ["ATL"]],
         ["ek", "MON", true, 0, 7, ["ATL"]],
         ["dinic", "MON", true, 0, 7, ["ATL"]]
       ];
       const results = scenarios.map(([algorithm, target, eliminated, flow, total, certificate]) => {
-        const generated = algorithm === "ek"
-          ? generateEdmondsKarpSteps(target)
-          : generateDinicSteps(target);
+        const generators = {
+          ff: generateFordFulkersonSteps,
+          ek: generateEdmondsKarpSteps,
+          dinic: generateDinicSteps
+        };
+        const generated = generators[algorithm](target);
         const result = generated.steps.at(-1).graphState.result;
         const passed = result.eliminated === eliminated
           && result.flow === flow
@@ -1720,8 +2058,10 @@
 
     window.__baseballDemo = {
       buildNetwork,
+      generateFordFulkersonSteps,
       generateEdmondsKarpSteps,
       generateDinicSteps,
+      parseDatasetText,
       runSelfTests,
       runPlayerSelfTest,
       runParameterSelfTest,
@@ -1731,6 +2071,7 @@
 
     refreshTeamSelect();
     renderParameterInputs();
+    DOM.datasetText.value = formatDatasetText();
     DOM.teamSelect.value = initialTarget;
     DOM.tabs.forEach((tab) => {
       const active = tab.dataset.algorithm === initialAlgorithm;
@@ -1744,3 +2085,4 @@
   </script>
 </body>
 </html>
+
