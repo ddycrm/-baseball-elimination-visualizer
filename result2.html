@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dinic 算法实验结果</title>
+  <style>
+    :root {
+      --bg: #f5f7fb; --surface: #fff; --ink: #192230; --muted: #667085;
+      --line: #dfe4ec; --blue: #1769aa; --cyan: #00a6a6; --green: #16865b;
+      --red: #c83c4d; --amber: #b87503; --soft: #eaf5f7;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: var(--bg); font: 15px/1.55 "Microsoft YaHei", system-ui, sans-serif; }
+    button, select, input { font: inherit; }
+    .top { background: #102a43; color: white; border-bottom: 5px solid var(--cyan); }
+    .top-inner, main { width: min(1240px, calc(100% - 32px)); margin: auto; }
+    .top-inner { padding: 42px 0 38px; }
+    .eyebrow { margin: 0 0 8px; color: #7fdbda; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 54px); letter-spacing: 0; }
+    .subtitle { max-width: 760px; margin: 12px 0 0; color: #d9e7f2; font-size: 17px; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
+    .nav a { padding: 7px 12px; color: white; border: 1px solid #4f6d84; border-radius: 6px; text-decoration: none; }
+    main { padding: 28px 0 54px; }
+    .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .metric { padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; margin-top: 6px; font-size: 25px; color: #123b58; }
+    section { margin-top: 26px; padding: 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+    h2 { margin: 0 0 16px; font-size: 23px; }
+    .lead { margin: 0; max-width: 900px; color: var(--muted); }
+    .algorithm { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .steps { margin: 0; padding-left: 22px; }
+    .steps li { margin: 8px 0; }
+    .complexity { padding: 18px; border-left: 4px solid var(--cyan); background: var(--soft); }
+    .complexity code { font-size: 20px; font-weight: 800; color: #085f63; }
+    .chart { display: grid; gap: 9px; margin-top: 18px; }
+    .bar-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 82px; gap: 10px; align-items: center; }
+    .bar-track { height: 18px; background: #eef1f5; border-radius: 3px; overflow: hidden; }
+    .bar { height: 100%; min-width: 2px; background: var(--cyan); }
+    .bar-row.highlight .bar { background: var(--blue); }
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .filters label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+    .filters select, .filters input { min-height: 38px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th { color: #30475a; background: #f2f5f8; font-size: 13px; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    .detail-button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 5px; background: white; cursor: pointer; }
+    .detail-row td { padding: 0; background: #f8fafc; }
+    .team-detail { padding: 16px; }
+    .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 9px; }
+    .team { padding: 11px; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 5px; background: white; }
+    .team.eliminated { border-left-color: var(--red); }
+    .team-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; }
+    .status { color: var(--green); }
+    .eliminated .status { color: var(--red); }
+    .certificate { margin-top: 6px; color: var(--muted); font-size: 13px; white-space: normal; }
+    .empty { padding: 30px; text-align: center; color: var(--muted); }
+    footer { padding: 24px; text-align: center; color: var(--muted); }
+    @media (max-width: 900px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .algorithm { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .top-inner, main { width: min(100% - 18px, 1240px); }
+      .metrics { grid-template-columns: 1fr; }
+      section { padding: 17px; }
+      .bar-row { grid-template-columns: 86px minmax(0, 1fr) 68px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <p class="eyebrow">实验六 · Baseball Elimination</p>
+      <h1>Dinic 最大流算法实验结果</h1>
+      <p class="subtitle">使用层次图和阻塞流求解棒球淘汰问题，并在 23 个官方数据集上验证正确性与性能。</p>
+      <nav class="nav"><a href="#summary">结果概览</a><a href="#algorithm">算法说明</a><a href="#performance">性能分析</a><a href="#datasets">数据集结果</a></nav>
+    </div>
+  </header>
+  <main>
+    <div class="metrics" id="summary">
+      <div class="metric"><span>官方数据集</span><strong>23</strong></div>
+      <div class="metric"><span>累计球队数</span><strong>487</strong></div>
+      <div class="metric"><span>淘汰球队数</span><strong>114</strong></div>
+      <div class="metric"><span>Dinic 总耗时</span><strong>899.97 ms</strong></div>
+      <div class="metric"><span>相对 E-K 总加速</span><strong>24.42×</strong></div>
+    </div>
+
+    <section>
+      <h2>实验结论</h2>
+      <p class="lead">Dinic 与 Edmonds-Karp 在全部数据集上得到一致的淘汰结果。随着球队数量增长，层次图和阻塞流显著减少重复搜索；最高加速出现在 <strong>teams50.txt</strong>，达到 <strong>82.24×</strong>。</p>
+    </section>
+
+    <section id="algorithm" class="algorithm">
+      <div>
+        <h2>Dinic 求解流程</h2>
+        <ol class="steps">
+          <li>为待判定球队构造比赛节点、球队节点、源点和汇点。</li>
+          <li>BFS 构造残量网络的层次图，只保留层级递增的可行边。</li>
+          <li>使用 DFS 和当前弧优化，在层次图中连续发送阻塞流。</li>
+          <li>重复 BFS/DFS，直到汇点不可达；比较最大流与比赛总容量。</li>
+          <li>若未满流，则从最终残量网络的源侧可达球队提取淘汰证书。</li>
+        </ol>
+      </div>
+      <div class="complexity">
+        <h2>复杂度与优势</h2>
+        <p>一般网络理论上界：</p>
+        <p><code>O(V²E)</code></p>
+        <p>棒球淘汰网络具有分层、容量结构明确的特点，实际运行中 Dinic 能一次 phase 推送多条增广路径，因此在中大型数据集上明显优于每轮只找一条最短增广路的 Edmonds-Karp。</p>
+      </div>
+    </section>
+
+    <section id="performance">
+      <h2>逐数据集加速比</h2>
+      <p class="lead">条形长度使用对数比例，避免 teams50 的极大加速掩盖其他数据集差异。</p>
+      <div class="chart" id="chart"></div>
+    </section>
+
+    <section id="datasets">
+      <h2>官方数据集结果</h2>
+      <div class="filters">
+        <label>搜索数据集<input id="search" type="search" placeholder="例如 teams50"></label>
+        <label>球队规模<select id="sizeFilter"><option value="all">全部</option><option value="small">1–10</option><option value="medium">11–30</option><option value="large">31–60</option></select></label>
+        <label>淘汰情况<select id="eliminationFilter"><option value="all">全部</option><option value="yes">存在淘汰</option><option value="no">无淘汰</option></select></label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>详情</th><th>数据集</th><th>球队</th><th>淘汰</th><th>Dinic / ms</th><th>E-K / ms</th><th>加速比</th></tr></thead>
+          <tbody id="resultsBody">
+        <tr data-row data-size="1" data-eliminated="0">
+          <td><button class="detail-button" data-file="teams1.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams1.txt</td>
+          <td>1</td>
+          <td>0</td>
+          <td>0.292</td>
+          <td>0.298</td>
+          <td><strong>1.02×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams1.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="4" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams4.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams4.txt</td>
+          <td>4</td>
+          <td>2</td>
+          <td>0.325</td>
+          <td>0.327</td>
+          <td><strong>1.00×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams4.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="4" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams4a.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams4a.txt</td>
+          <td>4</td>
+          <td>2</td>
+          <td>0.302</td>
+          <td>0.308</td>
+          <td><strong>1.02×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams4a.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="4" data-eliminated="3">
+          <td><button class="detail-button" data-file="teams4b.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams4b.txt</td>
+          <td>4</td>
+          <td>3</td>
+          <td>0.280</td>
+          <td>0.284</td>
+          <td><strong>1.02×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams4b.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="5" data-eliminated="1">
+          <td><button class="detail-button" data-file="teams5.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams5.txt</td>
+          <td>5</td>
+          <td>1</td>
+          <td>0.388</td>
+          <td>0.444</td>
+          <td><strong>1.15×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams5.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="5" data-eliminated="1">
+          <td><button class="detail-button" data-file="teams5a.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams5a.txt</td>
+          <td>5</td>
+          <td>1</td>
+          <td>0.390</td>
+          <td>0.455</td>
+          <td><strong>1.17×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams5a.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="5" data-eliminated="1">
+          <td><button class="detail-button" data-file="teams5b.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams5b.txt</td>
+          <td>5</td>
+          <td>1</td>
+          <td>0.364</td>
+          <td>0.391</td>
+          <td><strong>1.07×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams5b.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="5" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams5c.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams5c.txt</td>
+          <td>5</td>
+          <td>2</td>
+          <td>0.337</td>
+          <td>0.390</td>
+          <td><strong>1.16×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams5c.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="7" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams7.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams7.txt</td>
+          <td>7</td>
+          <td>2</td>
+          <td>0.531</td>
+          <td>0.674</td>
+          <td><strong>1.27×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams7.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="8" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams8.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams8.txt</td>
+          <td>8</td>
+          <td>2</td>
+          <td>0.631</td>
+          <td>0.650</td>
+          <td><strong>1.03×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams8.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="10" data-eliminated="1">
+          <td><button class="detail-button" data-file="teams10.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams10.txt</td>
+          <td>10</td>
+          <td>1</td>
+          <td>0.992</td>
+          <td>1.944</td>
+          <td><strong>1.96×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams10.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="12" data-eliminated="4">
+          <td><button class="detail-button" data-file="teams12.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams12.txt</td>
+          <td>12</td>
+          <td>4</td>
+          <td>1.381</td>
+          <td>2.658</td>
+          <td><strong>1.92×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams12.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="12" data-eliminated="10">
+          <td><button class="detail-button" data-file="teams12-allgames.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams12-allgames.txt</td>
+          <td>12</td>
+          <td>10</td>
+          <td>0.437</td>
+          <td>0.578</td>
+          <td><strong>1.32×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams12-allgames.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="24" data-eliminated="10">
+          <td><button class="detail-button" data-file="teams24.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams24.txt</td>
+          <td>24</td>
+          <td>10</td>
+          <td>8.179</td>
+          <td>37.842</td>
+          <td><strong>4.63×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams24.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="29" data-eliminated="17">
+          <td><button class="detail-button" data-file="teams29.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams29.txt</td>
+          <td>29</td>
+          <td>17</td>
+          <td>23.164</td>
+          <td>168.042</td>
+          <td><strong>7.25×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams29.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="30" data-eliminated="5">
+          <td><button class="detail-button" data-file="teams30.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams30.txt</td>
+          <td>30</td>
+          <td>5</td>
+          <td>28.422</td>
+          <td>201.130</td>
+          <td><strong>7.08×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams30.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="32" data-eliminated="9">
+          <td><button class="detail-button" data-file="teams32.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams32.txt</td>
+          <td>32</td>
+          <td>9</td>
+          <td>25.844</td>
+          <td>220.873</td>
+          <td><strong>8.55×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams32.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="36" data-eliminated="2">
+          <td><button class="detail-button" data-file="teams36.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams36.txt</td>
+          <td>36</td>
+          <td>2</td>
+          <td>54.765</td>
+          <td>612.182</td>
+          <td><strong>11.18×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams36.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="42" data-eliminated="8">
+          <td><button class="detail-button" data-file="teams42.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams42.txt</td>
+          <td>42</td>
+          <td>8</td>
+          <td>83.678</td>
+          <td>474.115</td>
+          <td><strong>5.67×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams42.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="48" data-eliminated="6">
+          <td><button class="detail-button" data-file="teams48.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams48.txt</td>
+          <td>48</td>
+          <td>6</td>
+          <td>122.448</td>
+          <td>817.137</td>
+          <td><strong>6.67×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams48.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="50" data-eliminated="0">
+          <td><button class="detail-button" data-file="teams50.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams50.txt</td>
+          <td>50</td>
+          <td>0</td>
+          <td>199.746</td>
+          <td>16426.127</td>
+          <td><strong>82.24×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams50.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="54" data-eliminated="8">
+          <td><button class="detail-button" data-file="teams54.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams54.txt</td>
+          <td>54</td>
+          <td>8</td>
+          <td>141.810</td>
+          <td>1420.970</td>
+          <td><strong>10.02×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams54.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        
+
+        <tr data-row data-size="60" data-eliminated="18">
+          <td><button class="detail-button" data-file="teams60.txt" aria-expanded="false">＋</button></td>
+          <td class="dataset">teams60.txt</td>
+          <td>60</td>
+          <td>18</td>
+          <td>205.261</td>
+          <td>1591.855</td>
+          <td><strong>7.76×</strong></td>
+        </tr>
+        <tr class="detail-row" data-detail="teams60.txt" hidden>
+          <td colspan="7"><div class="team-detail"></div></td>
+        </tr>
+        </tbody>
+        </table>
+        <div class="empty" id="empty" hidden>没有符合筛选条件的数据集。</div>
+      </div>
+    </section>
+  </main>
+  <footer>数据来源：本实验目录 official_data 与 official_all_benchmark.csv</footer>
+  <script>
+    const DATA = [{"file": "teams1.txt", "teams": 1, "eliminated": 0, "ek_ms": 0.298400002066046, "dinic_ms": 0.2921000123023987, "speedup": 1.0215679202270118, "team_results": [{"name": "Turing", "wins": 100, "losses": 55, "remaining": 0, "eliminated": false, "certificate": []}]}, {"file": "teams4.txt", "teams": 4, "eliminated": 2, "ek_ms": 0.32679998548701406, "dinic_ms": 0.32539997482672334, "speedup": 1.004302430143199, "team_results": [{"name": "Atlanta", "wins": 83, "losses": 71, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Philadelphia", "wins": 80, "losses": 79, "remaining": 3, "eliminated": true, "certificate": ["Atlanta", "New_York"]}, {"name": "New_York", "wins": 78, "losses": 78, "remaining": 6, "eliminated": false, "certificate": []}, {"name": "Montreal", "wins": 77, "losses": 82, "remaining": 3, "eliminated": true, "certificate": ["Atlanta"]}]}, {"file": "teams4a.txt", "teams": 4, "eliminated": 2, "ek_ms": 0.30750001315027475, "dinic_ms": 0.3017000271938741, "speedup": 1.0192243468134443, "team_results": [{"name": "CIA", "wins": 3, "losses": 3, "remaining": 3, "eliminated": false, "certificate": []}, {"name": "Ghaddafi", "wins": 2, "losses": 5, "remaining": 2, "eliminated": true, "certificate": ["CIA", "Obama"]}, {"name": "Bin_Ladin", "wins": 3, "losses": 6, "remaining": 0, "eliminated": true, "certificate": ["Obama"]}, {"name": "Obama", "wins": 4, "losses": 2, "remaining": 3, "eliminated": false, "certificate": []}]}, {"file": "teams4b.txt", "teams": 4, "eliminated": 3, "ek_ms": 0.28440001187846065, "dinic_ms": 0.2797000342980027, "speedup": 1.016803636053367, "team_results": [{"name": "Gryffindor", "wins": 11, "losses": 6, "remaining": 1, "eliminated": false, "certificate": []}, {"name": "Hufflepuff", "wins": 7, "losses": 9, "remaining": 2, "eliminated": true, "certificate": ["Gryffindor"]}, {"name": "Ravenclaw", "wins": 8, "losses": 9, "remaining": 1, "eliminated": true, "certificate": ["Gryffindor"]}, {"name": "Slytherin", "wins": 7, "losses": 9, "remaining": 2, "eliminated": true, "certificate": ["Gryffindor"]}]}, {"file": "teams5.txt", "teams": 5, "eliminated": 1, "ek_ms": 0.4440000047907233, "dinic_ms": 0.387699983548373, "speedup": 1.1452154336636071, "team_results": [{"name": "New_York", "wins": 75, "losses": 59, "remaining": 28, "eliminated": false, "certificate": []}, {"name": "Baltimore", "wins": 71, "losses": 63, "remaining": 28, "eliminated": false, "certificate": []}, {"name": "Boston", "wins": 69, "losses": 66, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Toronto", "wins": 63, "losses": 72, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Detroit", "wins": 49, "losses": 86, "remaining": 27, "eliminated": true, "certificate": ["New_York", "Baltimore", "Boston", "Toronto"]}]}, {"file": "teams5a.txt", "teams": 5, "eliminated": 1, "ek_ms": 0.45520003186538815, "dinic_ms": 0.39010000182315707, "speedup": 1.1668803633375595, "team_results": [{"name": "New_York", "wins": 75, "losses": 59, "remaining": 28, "eliminated": false, "certificate": []}, {"name": "Baltimore", "wins": 71, "losses": 63, "remaining": 28, "eliminated": false, "certificate": []}, {"name": "Boston", "wins": 69, "losses": 66, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Toronto", "wins": 63, "losses": 72, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Detroit", "wins": 49, "losses": 86, "remaining": 28, "eliminated": true, "certificate": ["New_York", "Baltimore", "Boston", "Toronto"]}]}, {"file": "teams5b.txt", "teams": 5, "eliminated": 1, "ek_ms": 0.39060000563040376, "dinic_ms": 0.36429997999221087, "speedup": 1.0721933216651707, "team_results": [{"name": "New_York", "wins": 75, "losses": 59, "remaining": 21, "eliminated": false, "certificate": []}, {"name": "Baltimore", "wins": 71, "losses": 63, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Boston", "wins": 69, "losses": 66, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Toronto", "wins": 63, "losses": 72, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Detroit", "wins": 49, "losses": 86, "remaining": 7, "eliminated": true, "certificate": ["New_York", "Baltimore", "Boston", "Toronto"]}]}, {"file": "teams5c.txt", "teams": 5, "eliminated": 2, "ek_ms": 0.38979999953880906, "dinic_ms": 0.3372999490238726, "speedup": 1.1556479645694246, "team_results": [{"name": "New_York", "wins": 83, "losses": 62, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Philadelphia", "wins": 77, "losses": 69, "remaining": 8, "eliminated": true, "certificate": ["Atlanta", "Florida"]}, {"name": "Atlanta", "wins": 76, "losses": 70, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Florida", "wins": 78, "losses": 68, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Washington", "wins": 0, "losses": 1000, "remaining": 0, "eliminated": true, "certificate": ["New_York", "Philadelphia", "Atlanta", "Florida"]}]}, {"file": "teams7.txt", "teams": 7, "eliminated": 2, "ek_ms": 0.6740999524481595, "dinic_ms": 0.5314999725669622, "speedup": 1.2682972478671792, "team_results": [{"name": "U.S.A.", "wins": 14, "losses": 5, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "England", "wins": 12, "losses": 3, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "France", "wins": 16, "losses": 2, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "Germany", "wins": 13, "losses": 3, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Ireland", "wins": 11, "losses": 3, "remaining": 5, "eliminated": true, "certificate": ["U.S.A.", "France", "Germany"]}, {"name": "Belgium", "wins": 12, "losses": 4, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "China", "wins": 13, "losses": 2, "remaining": 2, "eliminated": true, "certificate": ["France"]}]}, {"file": "teams8.txt", "teams": 8, "eliminated": 2, "ek_ms": 0.6500000017695129, "dinic_ms": 0.6307000294327736, "speedup": 1.0306008743238793, "team_results": [{"name": "Brown", "wins": 44, "losses": 51, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Columbia", "wins": 44, "losses": 51, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Cornell", "wins": 44, "losses": 51, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Dartmouth", "wins": 44, "losses": 51, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Penn", "wins": 44, "losses": 51, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Harvard", "wins": 43, "losses": 60, "remaining": 1, "eliminated": true, "certificate": ["Brown", "Columbia", "Cornell", "Dartmouth", "Penn", "Princeton"]}, {"name": "Yale", "wins": 43, "losses": 60, "remaining": 1, "eliminated": true, "certificate": ["Brown", "Columbia", "Cornell", "Dartmouth", "Penn", "Princeton"]}, {"name": "Princeton", "wins": 0, "losses": 59, "remaining": 45, "eliminated": false, "certificate": []}]}, {"file": "teams10.txt", "teams": 10, "eliminated": 1, "ek_ms": 1.9444999634288251, "dinic_ms": 0.9917999850586057, "speedup": 1.9605767218416768, "team_results": [{"name": "Atlanta", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Boston", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Chicago", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Cleveland", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Dallas", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Denver", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Detroit", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Golden_State", "wins": 0, "losses": 0, "remaining": 63, "eliminated": false, "certificate": []}, {"name": "Houston", "wins": 31, "losses": 32, "remaining": 0, "eliminated": true, "certificate": ["Indiana"]}, {"name": "Indiana", "wins": 32, "losses": 31, "remaining": 0, "eliminated": false, "certificate": []}]}, {"file": "teams12.txt", "teams": 12, "eliminated": 4, "ek_ms": 2.658400044310838, "dinic_ms": 1.3809999800287187, "speedup": 1.9249819571000681, "team_results": [{"name": "Poland", "wins": 6, "losses": 1, "remaining": 4, "eliminated": false, "certificate": []}, {"name": "Russia", "wins": 5, "losses": 1, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Brazil", "wins": 5, "losses": 1, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Iran", "wins": 5, "losses": 2, "remaining": 4, "eliminated": false, "certificate": []}, {"name": "Italy", "wins": 4, "losses": 2, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Cuba", "wins": 4, "losses": 2, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Argentina", "wins": 3, "losses": 3, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "USA", "wins": 3, "losses": 4, "remaining": 4, "eliminated": false, "certificate": []}, {"name": "Japan", "wins": 2, "losses": 5, "remaining": 4, "eliminated": true, "certificate": ["Poland", "Russia", "Brazil", "Iran"]}, {"name": "Serbia", "wins": 1, "losses": 5, "remaining": 5, "eliminated": true, "certificate": ["Poland", "Russia", "Brazil", "Iran"]}, {"name": "Egypt", "wins": 1, "losses": 6, "remaining": 4, "eliminated": true, "certificate": ["Poland"]}, {"name": "China", "wins": 0, "losses": 7, "remaining": 4, "eliminated": true, "certificate": ["Poland", "Russia", "Brazil", "Iran"]}]}, {"file": "teams12-allgames.txt", "teams": 12, "eliminated": 10, "ek_ms": 0.5776999751105905, "dinic_ms": 0.437400012742728, "speedup": 1.320758935254958, "team_results": [{"name": "Team0", "wins": 47, "losses": 52, "remaining": 0, "eliminated": true, "certificate": ["Team1", "Team2", "Team4", "Team7", "Team9", "Team10", "Team11"]}, {"name": "Team1", "wins": 49, "losses": 50, "remaining": 0, "eliminated": true, "certificate": ["Team2", "Team4", "Team7", "Team10", "Team11"]}, {"name": "Team2", "wins": 51, "losses": 48, "remaining": 0, "eliminated": true, "certificate": ["Team4", "Team7", "Team11"]}, {"name": "Team3", "wins": 46, "losses": 53, "remaining": 0, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team4", "Team7", "Team9", "Team10", "Team11"]}, {"name": "Team4", "wins": 55, "losses": 44, "remaining": 0, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 46, "losses": 53, "remaining": 0, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team4", "Team7", "Team9", "Team10", "Team11"]}, {"name": "Team6", "wins": 46, "losses": 53, "remaining": 0, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team4", "Team7", "Team9", "Team10", "Team11"]}, {"name": "Team7", "wins": 54, "losses": 45, "remaining": 0, "eliminated": true, "certificate": ["Team4", "Team11"]}, {"name": "Team8", "wins": 45, "losses": 54, "remaining": 0, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team3", "Team4", "Team5", "Team6", "Team7", "Team9", "Team10", "Team11"]}, {"name": "Team9", "wins": 49, "losses": 50, "remaining": 0, "eliminated": true, "certificate": ["Team2", "Team4", "Team7", "Team10", "Team11"]}, {"name": "Team10", "wins": 51, "losses": 48, "remaining": 0, "eliminated": true, "certificate": ["Team4", "Team7", "Team11"]}, {"name": "Team11", "wins": 55, "losses": 44, "remaining": 0, "eliminated": false, "certificate": []}]}, {"file": "teams24.txt", "teams": 24, "eliminated": 10, "ek_ms": 37.84159995848313, "dinic_ms": 8.178699994459748, "speedup": 4.626847785603706, "team_results": [{"name": "Team0", "wins": 81, "losses": 66, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 75, "losses": 75, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 79, "losses": 68, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 74, "losses": 71, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 66, "losses": 82, "remaining": 14, "eliminated": true, "certificate": ["Team0", "Team14", "Team15", "Team17", "Team20", "Team22"]}, {"name": "Team5", "wins": 71, "losses": 80, "remaining": 11, "eliminated": true, "certificate": ["Team14", "Team22"]}, {"name": "Team6", "wins": 69, "losses": 71, "remaining": 22, "eliminated": false, "certificate": []}, {"name": "Team7", "wins": 68, "losses": 81, "remaining": 13, "eliminated": true, "certificate": ["Team14", "Team15", "Team20", "Team22"]}, {"name": "Team8", "wins": 72, "losses": 72, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 65, "losses": 81, "remaining": 16, "eliminated": true, "certificate": ["Team14", "Team15", "Team20", "Team22"]}, {"name": "Team10", "wins": 80, "losses": 69, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 74, "losses": 80, "remaining": 8, "eliminated": true, "certificate": ["Team14", "Team22"]}, {"name": "Team12", "wins": 70, "losses": 81, "remaining": 11, "eliminated": true, "certificate": ["Team14", "Team15", "Team20", "Team22"]}, {"name": "Team13", "wins": 69, "losses": 78, "remaining": 15, "eliminated": true, "certificate": ["Team14", "Team15", "Team17", "Team20", "Team22"]}, {"name": "Team14", "wins": 83, "losses": 66, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team15", "wins": 82, "losses": 59, "remaining": 21, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 55, "losses": 87, "remaining": 20, "eliminated": true, "certificate": ["Team0", "Team2", "Team10", "Team14", "Team15", "Team17", "Team20", "Team21", "Team22"]}, {"name": "Team17", "wins": 81, "losses": 64, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 71, "losses": 71, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 68, "losses": 84, "remaining": 10, "eliminated": true, "certificate": ["Team0", "Team2", "Team10", "Team14", "Team15", "Team17", "Team20", "Team22"]}, {"name": "Team20", "wins": 82, "losses": 60, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 76, "losses": 69, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 84, "losses": 63, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 62, "losses": 79, "remaining": 21, "eliminated": true, "certificate": ["Team22"]}]}, {"file": "teams29.txt", "teams": 29, "eliminated": 17, "ek_ms": 168.04199997568503, "dinic_ms": 23.164199956227094, "speedup": 7.254383932673284, "team_results": [{"name": "Atlanta", "wins": 123, "losses": 76, "remaining": 53, "eliminated": false, "certificate": []}, {"name": "Boston", "wins": 112, "losses": 86, "remaining": 54, "eliminated": false, "certificate": []}, {"name": "Chicago", "wins": 125, "losses": 70, "remaining": 57, "eliminated": false, "certificate": []}, {"name": "Cleveland", "wins": 124, "losses": 79, "remaining": 49, "eliminated": false, "certificate": []}, {"name": "Dallas", "wins": 116, "losses": 78, "remaining": 58, "eliminated": false, "certificate": []}, {"name": "Denver", "wins": 121, "losses": 83, "remaining": 48, "eliminated": false, "certificate": []}, {"name": "Detroit", "wins": 103, "losses": 124, "remaining": 25, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia"]}, {"name": "Golden_State", "wins": 98, "losses": 121, "remaining": 33, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "Houston", "wins": 114, "losses": 123, "remaining": 15, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia"]}, {"name": "Indiana", "wins": 93, "losses": 136, "remaining": 23, "eliminated": true, "certificate": ["Atlanta", "Chicago", "Cleveland", "Denver", "New_Jersey", "New_Orleans", "Philadelphia", "Sacramento"]}, {"name": "LA_Clippers", "wins": 92, "losses": 134, "remaining": 26, "eliminated": true, "certificate": ["Atlanta", "Chicago", "Cleveland", "Denver", "New_Orleans", "Philadelphia", "Sacramento"]}, {"name": "LA_Lakers", "wins": 106, "losses": 116, "remaining": 30, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "Memphis", "wins": 95, "losses": 122, "remaining": 35, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "Miami", "wins": 115, "losses": 112, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Milwaukee", "wins": 114, "losses": 113, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Minnesota", "wins": 113, "losses": 108, "remaining": 31, "eliminated": false, "certificate": []}, {"name": "New_Jersey", "wins": 117, "losses": 115, "remaining": 20, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "New_Orleans", "wins": 119, "losses": 118, "remaining": 15, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "New_York", "wins": 113, "losses": 116, "remaining": 23, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "Orlando", "wins": 100, "losses": 133, "remaining": 19, "eliminated": true, "certificate": ["Atlanta", "Chicago", "Cleveland", "Denver", "Philadelphia", "Sacramento"]}, {"name": "Philadelphia", "wins": 122, "losses": 104, "remaining": 26, "eliminated": false, "certificate": []}, {"name": "Phoenix", "wins": 103, "losses": 123, "remaining": 26, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia"]}, {"name": "Portand", "wins": 104, "losses": 127, "remaining": 21, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia", "Sacramento"]}, {"name": "Sacramento", "wins": 124, "losses": 114, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "San_Antonio", "wins": 102, "losses": 124, "remaining": 26, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia"]}, {"name": "Seattle", "wins": 115, "losses": 107, "remaining": 30, "eliminated": false, "certificate": []}, {"name": "Toronto", "wins": 113, "losses": 123, "remaining": 16, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver", "Philadelphia"]}, {"name": "Utah", "wins": 107, "losses": 116, "remaining": 29, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}, {"name": "Washington", "wins": 113, "losses": 115, "remaining": 24, "eliminated": true, "certificate": ["Atlanta", "Boston", "Chicago", "Cleveland", "Dallas", "Denver"]}]}, {"file": "teams30.txt", "teams": 30, "eliminated": 5, "ek_ms": 201.12959999823943, "dinic_ms": 28.422400006093085, "speedup": 7.076446744649362, "team_results": [{"name": "Team0", "wins": 70, "losses": 80, "remaining": 12, "eliminated": true, "certificate": ["Team16"]}, {"name": "Team1", "wins": 73, "losses": 78, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 68, "losses": 77, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 73, "losses": 77, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 69, "losses": 78, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 72, "losses": 78, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 67, "losses": 78, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team7", "wins": 62, "losses": 82, "remaining": 18, "eliminated": true, "certificate": ["Team10", "Team16", "Team19", "Team21"]}, {"name": "Team8", "wins": 80, "losses": 70, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 78, "losses": 72, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 82, "losses": 67, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 69, "losses": 78, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 60, "losses": 82, "remaining": 20, "eliminated": true, "certificate": ["Team10", "Team16", "Team19", "Team21"]}, {"name": "Team13", "wins": 80, "losses": 68, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 73, "losses": 72, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team15", "wins": 75, "losses": 71, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 83, "losses": 64, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 75, "losses": 73, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 68, "losses": 79, "remaining": 15, "eliminated": true, "certificate": ["Team10", "Team16", "Team19", "Team21"]}, {"name": "Team19", "wins": 81, "losses": 65, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 76, "losses": 71, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 81, "losses": 63, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 70, "losses": 74, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 75, "losses": 73, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team24", "wins": 74, "losses": 71, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 77, "losses": 70, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team26", "wins": 70, "losses": 76, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 68, "losses": 79, "remaining": 15, "eliminated": true, "certificate": ["Team10", "Team16", "Team19", "Team21"]}, {"name": "Team28", "wins": 78, "losses": 68, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 75, "losses": 68, "remaining": 19, "eliminated": false, "certificate": []}]}, {"file": "teams32.txt", "teams": 32, "eliminated": 9, "ek_ms": 220.87289998307824, "dinic_ms": 25.844199990388006, "speedup": 8.546323742473184, "team_results": [{"name": "Team0", "wins": 80, "losses": 66, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 78, "losses": 67, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 62, "losses": 87, "remaining": 13, "eliminated": true, "certificate": ["Team0", "Team1", "Team6", "Team8", "Team9", "Team10", "Team11", "Team16", "Team23", "Team24", "Team26", "Team31"]}, {"name": "Team3", "wins": 68, "losses": 83, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team6", "Team8", "Team9", "Team10", "Team11", "Team16", "Team26"]}, {"name": "Team4", "wins": 74, "losses": 78, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 72, "losses": 67, "remaining": 23, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 83, "losses": 65, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team7", "wins": 70, "losses": 74, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team8", "wins": 83, "losses": 66, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 80, "losses": 70, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 80, "losses": 70, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 81, "losses": 66, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 67, "losses": 82, "remaining": 13, "eliminated": true, "certificate": ["Team6", "Team8", "Team11"]}, {"name": "Team13", "wins": 67, "losses": 82, "remaining": 13, "eliminated": true, "certificate": ["Team6", "Team8", "Team11"]}, {"name": "Team14", "wins": 68, "losses": 82, "remaining": 12, "eliminated": true, "certificate": ["Team6", "Team8", "Team11"]}, {"name": "Team15", "wins": 75, "losses": 73, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 80, "losses": 66, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 63, "losses": 81, "remaining": 18, "eliminated": true, "certificate": ["Team6", "Team8"]}, {"name": "Team18", "wins": 75, "losses": 73, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 74, "losses": 74, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 75, "losses": 76, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 69, "losses": 77, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 71, "losses": 73, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 76, "losses": 67, "remaining": 19, "eliminated": false, "certificate": []}, {"name": "Team24", "wins": 78, "losses": 70, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 67, "losses": 79, "remaining": 16, "eliminated": true, "certificate": ["Team0", "Team6", "Team8", "Team11", "Team26"]}, {"name": "Team26", "wins": 80, "losses": 70, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 74, "losses": 75, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team28", "wins": 68, "losses": 83, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team6", "Team8", "Team9", "Team10", "Team11", "Team16", "Team26"]}, {"name": "Team29", "wins": 72, "losses": 79, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team6", "Team8", "Team11", "Team26"]}, {"name": "Team30", "wins": 73, "losses": 70, "remaining": 19, "eliminated": false, "certificate": []}, {"name": "Team31", "wins": 79, "losses": 71, "remaining": 12, "eliminated": false, "certificate": []}]}, {"file": "teams36.txt", "teams": 36, "eliminated": 2, "ek_ms": 612.181700009387, "dinic_ms": 54.765300010330975, "speedup": 11.178277118794282, "team_results": [{"name": "Team0", "wins": 96, "losses": 81, "remaining": 23, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 83, "losses": 90, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 89, "losses": 91, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 85, "losses": 88, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 91, "losses": 94, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 100, "losses": 80, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 86, "losses": 87, "remaining": 27, "eliminated": false, "certificate": []}, {"name": "Team7", "wins": 89, "losses": 87, "remaining": 24, "eliminated": false, "certificate": []}, {"name": "Team8", "wins": 85, "losses": 94, "remaining": 21, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 91, "losses": 83, "remaining": 26, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 87, "losses": 90, "remaining": 23, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 87, "losses": 88, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 95, "losses": 80, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team13", "wins": 87, "losses": 96, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 90, "losses": 86, "remaining": 24, "eliminated": false, "certificate": []}, {"name": "Team15", "wins": 85, "losses": 95, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 84, "losses": 91, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 71, "losses": 101, "remaining": 28, "eliminated": true, "certificate": ["Team5"]}, {"name": "Team18", "wins": 94, "losses": 81, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 80, "losses": 94, "remaining": 26, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 96, "losses": 74, "remaining": 30, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 79, "losses": 98, "remaining": 23, "eliminated": true, "certificate": ["Team18", "Team20", "Team22", "Team23"]}, {"name": "Team22", "wins": 99, "losses": 77, "remaining": 24, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 98, "losses": 82, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team24", "wins": 97, "losses": 86, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 92, "losses": 88, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team26", "wins": 78, "losses": 90, "remaining": 32, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 84, "losses": 91, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team28", "wins": 74, "losses": 97, "remaining": 29, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 93, "losses": 90, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team30", "wins": 86, "losses": 89, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team31", "wins": 95, "losses": 74, "remaining": 31, "eliminated": false, "certificate": []}, {"name": "Team32", "wins": 84, "losses": 91, "remaining": 25, "eliminated": false, "certificate": []}, {"name": "Team33", "wins": 90, "losses": 84, "remaining": 26, "eliminated": false, "certificate": []}, {"name": "Team34", "wins": 84, "losses": 93, "remaining": 23, "eliminated": false, "certificate": []}, {"name": "Team35", "wins": 87, "losses": 90, "remaining": 23, "eliminated": false, "certificate": []}]}, {"file": "teams42.txt", "teams": 42, "eliminated": 8, "ek_ms": 474.11539999302477, "dinic_ms": 83.67800002451986, "speedup": 5.66595042728192, "team_results": [{"name": "Team0", "wins": 34, "losses": 20, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 28, "losses": 28, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 25, "losses": 28, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 29, "losses": 29, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 24, "losses": 29, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 31, "losses": 27, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 25, "losses": 32, "remaining": 9, "eliminated": true, "certificate": ["Team0", "Team18", "Team19", "Team21"]}, {"name": "Team7", "wins": 25, "losses": 30, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team8", "wins": 26, "losses": 28, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 33, "losses": 22, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 25, "losses": 26, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 30, "losses": 27, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 23, "losses": 30, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team13", "wins": 29, "losses": 25, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 24, "losses": 33, "remaining": 9, "eliminated": true, "certificate": ["Team0"]}, {"name": "Team15", "wins": 23, "losses": 32, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team18", "Team19", "Team21"]}, {"name": "Team16", "wins": 27, "losses": 25, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 27, "losses": 30, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 33, "losses": 21, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 29, "losses": 23, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 27, "losses": 33, "remaining": 6, "eliminated": true, "certificate": ["Team0"]}, {"name": "Team21", "wins": 33, "losses": 21, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 31, "losses": 28, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 27, "losses": 34, "remaining": 5, "eliminated": true, "certificate": ["Team0", "Team9", "Team18", "Team21", "Team28", "Team41"]}, {"name": "Team24", "wins": 24, "losses": 25, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 29, "losses": 32, "remaining": 5, "eliminated": true, "certificate": ["Team0", "Team18", "Team19", "Team21"]}, {"name": "Team26", "wins": 28, "losses": 26, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 25, "losses": 29, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team28", "wins": 33, "losses": 19, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 30, "losses": 23, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team30", "wins": 28, "losses": 29, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team31", "wins": 27, "losses": 24, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team32", "wins": 30, "losses": 24, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team33", "wins": 29, "losses": 26, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team34", "wins": 22, "losses": 30, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team35", "wins": 27, "losses": 25, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team36", "wins": 24, "losses": 34, "remaining": 8, "eliminated": true, "certificate": ["Team0", "Team9", "Team18", "Team21", "Team28", "Team41"]}, {"name": "Team37", "wins": 20, "losses": 35, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team9", "Team18", "Team21", "Team28", "Team41"]}, {"name": "Team38", "wins": 28, "losses": 27, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team39", "wins": 22, "losses": 31, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team40", "wins": 27, "losses": 27, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team41", "wins": 33, "losses": 27, "remaining": 6, "eliminated": false, "certificate": []}]}, {"file": "teams48.txt", "teams": 48, "eliminated": 6, "ek_ms": 817.1373000368476, "dinic_ms": 122.44750000536442, "speedup": 6.673368586545653, "team_results": [{"name": "Team0", "wins": 29, "losses": 22, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 24, "losses": 24, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 29, "losses": 23, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 26, "losses": 29, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 19, "losses": 35, "remaining": 12, "eliminated": true, "certificate": ["Team7", "Team16", "Team19", "Team26", "Team28", "Team38", "Team39", "Team40"]}, {"name": "Team5", "wins": 30, "losses": 19, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 28, "losses": 32, "remaining": 6, "eliminated": true, "certificate": ["Team38", "Team39", "Team40"]}, {"name": "Team7", "wins": 32, "losses": 24, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team8", "wins": 29, "losses": 28, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 30, "losses": 22, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 30, "losses": 28, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 19, "losses": 37, "remaining": 10, "eliminated": true, "certificate": ["Team5", "Team7", "Team9", "Team10", "Team16", "Team19", "Team22", "Team26", "Team28", "Team34", "Team37", "Team38", "Team39", "Team40", "Team46"]}, {"name": "Team12", "wins": 25, "losses": 29, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team13", "wins": 29, "losses": 23, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 19, "losses": 31, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team15", "wins": 28, "losses": 23, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 32, "losses": 24, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 28, "losses": 27, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 22, "losses": 31, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 33, "losses": 21, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 23, "losses": 26, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 26, "losses": 22, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 30, "losses": 23, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 22, "losses": 33, "remaining": 11, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team3", "Team5", "Team7", "Team8", "Team9", "Team10", "Team12", "Team13", "Team14", "Team15", "Team16", "Team17", "Team18", "Team19", "Team20", "Team21", "Team22", "Team24", "Team26", "Team28", "Team30", "Team31", "Team32", "Team33", "Team34", "Team35", "Team36", "Team37", "Team38", "Team39", "Team40", "Team41", "Team46"]}, {"name": "Team24", "wins": 27, "losses": 26, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 27, "losses": 34, "remaining": 5, "eliminated": true, "certificate": ["Team19", "Team26", "Team38", "Team39", "Team40"]}, {"name": "Team26", "wins": 33, "losses": 28, "remaining": 5, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 26, "losses": 29, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team28", "wins": 32, "losses": 28, "remaining": 6, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 29, "losses": 29, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team30", "wins": 19, "losses": 31, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team31", "wins": 28, "losses": 30, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team32", "wins": 28, "losses": 26, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team33", "wins": 27, "losses": 27, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team34", "wins": 30, "losses": 23, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team35", "wins": 28, "losses": 26, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team36", "wins": 22, "losses": 31, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team37", "wins": 31, "losses": 28, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "Team38", "wins": 33, "losses": 27, "remaining": 6, "eliminated": false, "certificate": []}, {"name": "Team39", "wins": 33, "losses": 23, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team40", "wins": 33, "losses": 20, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team41", "wins": 23, "losses": 29, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team42", "wins": 24, "losses": 29, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team43", "wins": 24, "losses": 25, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team44", "wins": 24, "losses": 29, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team45", "wins": 26, "losses": 31, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team46", "wins": 31, "losses": 25, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team47", "wins": 23, "losses": 33, "remaining": 10, "eliminated": true, "certificate": ["Team0", "Team1", "Team2", "Team3", "Team5", "Team7", "Team8", "Team9", "Team10", "Team12", "Team13", "Team14", "Team15", "Team16", "Team17", "Team18", "Team19", "Team20", "Team21", "Team22", "Team24", "Team26", "Team28", "Team30", "Team31", "Team32", "Team33", "Team34", "Team35", "Team36", "Team37", "Team38", "Team39", "Team40", "Team41", "Team46"]}]}, {"file": "teams50.txt", "teams": 50, "eliminated": 0, "ek_ms": 16426.12660001032, "dinic_ms": 199.74579999689013, "speedup": 82.23515388191421, "team_results": [{"name": "turkey", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "guineafowl", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "quail", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "grouse", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "ptarmigan", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "snowcock", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "partridge", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "pheasant", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "chicken", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "peacock", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "dove", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "goose", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "duck", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "swan", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "mallard", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "pintail", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "eider", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "penguin", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "loon", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "albatross", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "flamingo", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "stork", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "ibis", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "spoonbill", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "heronegret", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "booby", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "cormorant", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "vulture", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "falcon", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "condor", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "osprey", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "buzzard", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "kite", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "eagle", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "hawk", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "harrier", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "sparrow", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "rail", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "coot", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "crane", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "sandpiper", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "gull", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "tern", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "razorbill", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "parrot", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "cockatoo", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "macaw", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "cuckoo", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "roadrunner", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}, {"name": "owl", "wins": 50, "losses": 50, "remaining": 50, "eliminated": false, "certificate": []}]}, {"file": "teams54.txt", "teams": 54, "eliminated": 8, "ek_ms": 1420.9695999743417, "dinic_ms": 141.80990000022575, "speedup": 10.020242592175014, "team_results": [{"name": "Team0", "wins": 29, "losses": 24, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 27, "losses": 29, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 33, "losses": 27, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 27, "losses": 33, "remaining": 8, "eliminated": true, "certificate": ["Team33", "Team34", "Team36", "Team41"]}, {"name": "Team4", "wins": 26, "losses": 31, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 32, "losses": 24, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team6", "wins": 29, "losses": 25, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team7", "wins": 22, "losses": 34, "remaining": 12, "eliminated": true, "certificate": ["Team33", "Team44"]}, {"name": "Team8", "wins": 27, "losses": 28, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 26, "losses": 26, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team10", "wins": 31, "losses": 26, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 24, "losses": 28, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 22, "losses": 28, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team13", "wins": 23, "losses": 29, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 23, "losses": 31, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team15", "wins": 24, "losses": 35, "remaining": 9, "eliminated": true, "certificate": ["Team30", "Team33", "Team34", "Team36", "Team41", "Team44"]}, {"name": "Team16", "wins": 30, "losses": 25, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 30, "losses": 22, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 32, "losses": 24, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 26, "losses": 22, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team20", "wins": 22, "losses": 26, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 30, "losses": 25, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team22", "wins": 22, "losses": 29, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 31, "losses": 24, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team24", "wins": 26, "losses": 31, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 26, "losses": 30, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team26", "wins": 28, "losses": 22, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team27", "wins": 27, "losses": 27, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team28", "wins": 30, "losses": 24, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 25, "losses": 33, "remaining": 10, "eliminated": true, "certificate": ["Team33", "Team34", "Team36", "Team41"]}, {"name": "Team30", "wins": 34, "losses": 26, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team31", "wins": 14, "losses": 34, "remaining": 20, "eliminated": true, "certificate": ["Team33", "Team44"]}, {"name": "Team32", "wins": 25, "losses": 28, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team33", "wins": 35, "losses": 20, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team34", "wins": 34, "losses": 20, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team35", "wins": 24, "losses": 30, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team36", "wins": 34, "losses": 22, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team37", "wins": 22, "losses": 33, "remaining": 13, "eliminated": true, "certificate": ["Team33", "Team34", "Team36", "Team41"]}, {"name": "Team38", "wins": 27, "losses": 31, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team39", "wins": 30, "losses": 29, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team40", "wins": 27, "losses": 23, "remaining": 18, "eliminated": false, "certificate": []}, {"name": "Team41", "wins": 34, "losses": 19, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team42", "wins": 20, "losses": 31, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team43", "wins": 19, "losses": 38, "remaining": 11, "eliminated": true, "certificate": ["Team2", "Team5", "Team10", "Team18", "Team23", "Team30", "Team33", "Team34", "Team36", "Team41", "Team44"]}, {"name": "Team44", "wins": 35, "losses": 23, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team45", "wins": 27, "losses": 32, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team46", "wins": 29, "losses": 27, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team47", "wins": 29, "losses": 26, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team48", "wins": 30, "losses": 27, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team49", "wins": 30, "losses": 26, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team50", "wins": 25, "losses": 33, "remaining": 10, "eliminated": true, "certificate": ["Team33", "Team34", "Team36", "Team41"]}, {"name": "Team51", "wins": 29, "losses": 22, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team52", "wins": 22, "losses": 32, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team53", "wins": 30, "losses": 21, "remaining": 17, "eliminated": false, "certificate": []}]}, {"file": "teams60.txt", "teams": 60, "eliminated": 18, "ek_ms": 1591.8549000052735, "dinic_ms": 205.26059996336699, "speedup": 7.755287182680812, "team_results": [{"name": "Team0", "wins": 33, "losses": 20, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team1", "wins": 35, "losses": 25, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team2", "wins": 26, "losses": 29, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team3", "wins": 28, "losses": 29, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team4", "wins": 27, "losses": 31, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team5", "wins": 18, "losses": 37, "remaining": 15, "eliminated": true, "certificate": ["Team1", "Team10", "Team13", "Team20", "Team22", "Team45", "Team49", "Team55"]}, {"name": "Team6", "wins": 32, "losses": 32, "remaining": 6, "eliminated": true, "certificate": ["Team10", "Team20", "Team22"]}, {"name": "Team7", "wins": 23, "losses": 34, "remaining": 13, "eliminated": true, "certificate": ["Team10", "Team20", "Team22", "Team49"]}, {"name": "Team8", "wins": 30, "losses": 28, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team9", "wins": 26, "losses": 33, "remaining": 11, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team10", "wins": 38, "losses": 19, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team11", "wins": 32, "losses": 25, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team12", "wins": 27, "losses": 31, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team13", "wins": 34, "losses": 24, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team14", "wins": 25, "losses": 33, "remaining": 12, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team15", "wins": 23, "losses": 27, "remaining": 20, "eliminated": false, "certificate": []}, {"name": "Team16", "wins": 31, "losses": 25, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team17", "wins": 24, "losses": 30, "remaining": 16, "eliminated": false, "certificate": []}, {"name": "Team18", "wins": 28, "losses": 29, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team19", "wins": 27, "losses": 34, "remaining": 9, "eliminated": true, "certificate": ["Team10", "Team20", "Team22", "Team49"]}, {"name": "Team20", "wins": 37, "losses": 25, "remaining": 8, "eliminated": false, "certificate": []}, {"name": "Team21", "wins": 28, "losses": 32, "remaining": 10, "eliminated": true, "certificate": ["Team10", "Team20", "Team22"]}, {"name": "Team22", "wins": 37, "losses": 23, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team23", "wins": 26, "losses": 31, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team24", "wins": 28, "losses": 30, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team25", "wins": 30, "losses": 23, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team26", "wins": 26, "losses": 33, "remaining": 11, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team27", "wins": 24, "losses": 34, "remaining": 12, "eliminated": true, "certificate": ["Team10", "Team20", "Team22", "Team49"]}, {"name": "Team28", "wins": 28, "losses": 28, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team29", "wins": 30, "losses": 27, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team30", "wins": 29, "losses": 32, "remaining": 9, "eliminated": true, "certificate": ["Team10", "Team20", "Team22"]}, {"name": "Team31", "wins": 33, "losses": 26, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team32", "wins": 30, "losses": 30, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team33", "wins": 31, "losses": 30, "remaining": 9, "eliminated": false, "certificate": []}, {"name": "Team34", "wins": 21, "losses": 30, "remaining": 19, "eliminated": false, "certificate": []}, {"name": "Team35", "wins": 32, "losses": 27, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team36", "wins": 28, "losses": 33, "remaining": 9, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team37", "wins": 31, "losses": 29, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team38", "wins": 29, "losses": 26, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team39", "wins": 26, "losses": 32, "remaining": 12, "eliminated": true, "certificate": ["Team10", "Team20", "Team22"]}, {"name": "Team40", "wins": 26, "losses": 33, "remaining": 11, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team41", "wins": 25, "losses": 28, "remaining": 17, "eliminated": false, "certificate": []}, {"name": "Team42", "wins": 28, "losses": 28, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team43", "wins": 30, "losses": 30, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team44", "wins": 30, "losses": 25, "remaining": 15, "eliminated": false, "certificate": []}, {"name": "Team45", "wins": 34, "losses": 26, "remaining": 10, "eliminated": false, "certificate": []}, {"name": "Team46", "wins": 24, "losses": 33, "remaining": 13, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team47", "wins": 31, "losses": 27, "remaining": 12, "eliminated": false, "certificate": []}, {"name": "Team48", "wins": 27, "losses": 29, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team49", "wins": 38, "losses": 21, "remaining": 11, "eliminated": false, "certificate": []}, {"name": "Team50", "wins": 27, "losses": 30, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team51", "wins": 29, "losses": 32, "remaining": 9, "eliminated": true, "certificate": ["Team10", "Team20", "Team22"]}, {"name": "Team52", "wins": 33, "losses": 30, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "Team53", "wins": 25, "losses": 35, "remaining": 10, "eliminated": true, "certificate": ["Team10", "Team20", "Team22", "Team49", "Team55"]}, {"name": "Team54", "wins": 31, "losses": 26, "remaining": 13, "eliminated": false, "certificate": []}, {"name": "Team55", "wins": 36, "losses": 27, "remaining": 7, "eliminated": false, "certificate": []}, {"name": "Team56", "wins": 28, "losses": 33, "remaining": 9, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team57", "wins": 27, "losses": 33, "remaining": 10, "eliminated": true, "certificate": ["Team10", "Team49"]}, {"name": "Team58", "wins": 29, "losses": 27, "remaining": 14, "eliminated": false, "certificate": []}, {"name": "Team59", "wins": 30, "losses": 30, "remaining": 10, "eliminated": false, "certificate": []}]}];
+    const byFile = Object.fromEntries(DATA.map(row => [row.file, row]));
+    const maxLog = Math.max(...DATA.map(row => Math.log10(row.speedup + 1)));
+    document.getElementById("chart").innerHTML = DATA.map(row => `
+      <div class="bar-row ${row.speedup > 10 ? "highlight" : ""}">
+        <span>${row.file}</span>
+        <div class="bar-track"><div class="bar" style="width:${Math.max(1, Math.log10(row.speedup + 1) / maxLog * 100)}%"></div></div>
+        <strong>${row.speedup.toFixed(2)}×</strong>
+      </div>`).join("");
+
+    function renderTeamDetail(file, target) {
+      const row = byFile[file];
+      target.innerHTML = `<div class="team-grid">${row.team_results.map(team => `
+        <article class="team ${team.eliminated ? "eliminated" : ""}">
+          <div class="team-head"><span>${team.name}</span><span class="status">${team.eliminated ? "已淘汰" : "未淘汰"}</span></div>
+          <div>胜 ${team.wins} · 负 ${team.losses} · 剩余 ${team.remaining}</div>
+          <div class="certificate">${team.eliminated ? `证书 R={${team.certificate.join(", ")}}` : "所有剩余比赛存在合法安排"}</div>
+        </article>`).join("")}</div>`;
+    }
+
+    document.querySelectorAll(".detail-button").forEach(button => {
+      button.addEventListener("click", () => {
+        const detail = document.querySelector(`[data-detail="${button.dataset.file}"]`);
+        const opening = detail.hidden;
+        detail.hidden = !opening;
+        button.textContent = opening ? "−" : "＋";
+        button.setAttribute("aria-expanded", String(opening));
+        if (opening && !detail.dataset.loaded) {
+          renderTeamDetail(button.dataset.file, detail.querySelector(".team-detail"));
+          detail.dataset.loaded = "true";
+        }
+      });
+    });
+
+    function applyFilters() {
+      const query = document.getElementById("search").value.trim().toLowerCase();
+      const size = document.getElementById("sizeFilter").value;
+      const elimination = document.getElementById("eliminationFilter").value;
+      let visible = 0;
+      document.querySelectorAll("[data-row]").forEach(row => {
+        const teams = Number(row.dataset.size);
+        const eliminated = Number(row.dataset.eliminated);
+        const sizeMatch = size === "all"
+          || (size === "small" && teams <= 10)
+          || (size === "medium" && teams >= 11 && teams <= 30)
+          || (size === "large" && teams >= 31);
+        const eliminationMatch = elimination === "all"
+          || (elimination === "yes" && eliminated > 0)
+          || (elimination === "no" && eliminated === 0);
+        const searchMatch = row.querySelector(".dataset").textContent.toLowerCase().includes(query);
+        const show = sizeMatch && eliminationMatch && searchMatch;
+        row.hidden = !show;
+        const detail = row.nextElementSibling;
+        if (!show) detail.hidden = true;
+        visible += Number(show);
+      });
+      document.getElementById("empty").hidden = visible !== 0;
+    }
+    ["search", "sizeFilter", "eliminationFilter"].forEach(id =>
+      document.getElementById(id).addEventListener("input", applyFilters)
+    );
+  </script>
+</body>
+</html>
